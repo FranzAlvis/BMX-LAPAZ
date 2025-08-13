@@ -1,0 +1,75 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap');
+
+/* Custom BMX Racing Styles */
+:root {
+  --bmx-orange: #ff6b35;
+  --bmx-yellow: #f7931e;
+  --bmx-red: #dc2626;
+  --bmx-green: #16a34a;
+  --bmx-blue: #2563eb;
+  --bmx-dark: #1f2937;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #f9fafb;
+}
+
+.font-display {
+  font-family: 'Poppins', system-ui, sans-serif;
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    transform: translateY(10px); 
+    opacity: 0; 
+  }
+  to { 
+    transform: translateY(0); 
+    opacity: 1; 
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+/* BMX themed components */
+.bmx-gradient {
+  background: linear-gradient(135deg, var(--bmx-orange) 0%, var(--bmx-yellow) 100%);
+}
+
+.bmx-card {
+  @apply bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300;
+}
+
+.bmx-button {
+  @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200;
+}
+
+.bmx-input {
+  @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm;
+}
+
+/* Status indicators */
+.status-planned { @apply bg-gray-100 text-gray-800; }
+.status-active { @apply bg-green-100 text-green-800; }
+.status-completed { @apply bg-blue-100 text-blue-800; }
+.status-cancelled { @apply bg-red-100 text-red-800; }
+
+/* Position badges */
+.position-1 { @apply bg-yellow-400 text-yellow-900; }
+.position-2 { @apply bg-gray-300 text-gray-900; }
+.position-3 { @apply bg-orange-400 text-orange-900; }
+.position-other { @apply bg-blue-100 text-blue-800; }

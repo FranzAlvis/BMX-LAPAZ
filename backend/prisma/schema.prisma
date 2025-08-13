@@ -1,0 +1,294 @@
+// BMX Race Management System - Prisma Schema
+// Modern PostgreSQL implementation with all required features
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Users and Authentication
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  auditLogs AuditLog[]
+  results   Result[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  Admin
+  Secretaria
+  Cronometraje
+  Juez
+  Publico
+}
+
+// Events (campeonatos/fechas/sedes)
+model Event {
+  id        String      @id @default(uuid())
+  name      String
+  date      DateTime    @db.Date
+  venue     String
+  city      String
+  country   String      @default("Bolivia")
+  status    EventStatus @default(PLANNED)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  registrations Registration[]
+  races         Race[]
+
+  @@map("events")
+}
+
+enum EventStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+// Categories (edad/sexo/cruiser/élite, configurable)
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  minAge    Int      @map("min_age")
+  maxAge    Int      @map("max_age")
+  gender    Gender
+  wheel     Wheel    @default(TWENTY_INCH)
+  maxRiders Int      @default(32) @map("max_riders")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  registrations Registration[]
+  races         Race[]
+
+  @@map("categories")
+}
+
+enum Gender {
+  M
+  F
+  Mixed
+}
+
+enum Wheel {
+  TWENTY_INCH @map("20\"")
+  TWENTY_FOUR_INCH @map("24\"")
+  Cruiser
+}
+
+// Riders (datos personales, club, número placa)
+model Rider {
+  id          String    @id @default(uuid())
+  plate       Int       @unique
+  firstName   String    @map("first_name")
+  lastName    String    @map("last_name")
+  club        String?
+  dateOfBirth DateTime  @map("date_of_birth") @db.Date
+  gender      RiderGender
+  license     String?
+  phone       String?
+  email       String?
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  registrations Registration[]
+  heatEntries   HeatEntry[]
+
+  @@map("riders")
+}
+
+enum RiderGender {
+  M
+  F
+}
+
+// Registrations (piloto ↔ categoría ↔ evento)
+model Registration {
+  id           String             @id @default(uuid())
+  eventId      String             @map("event_id")
+  categoryId   String             @map("category_id")
+  riderId      String             @map("rider_id")
+  seed         Int?
+  status       RegistrationStatus @default(REGISTERED)
+  registeredAt DateTime           @default(now()) @map("registered_at")
+
+  // Relations
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  rider    Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, categoryId, riderId])
+  @@map("registrations")
+}
+
+enum RegistrationStatus {
+  REGISTERED
+  CONFIRMED
+  CANCELLED
+}
+
+// Races (= categoría dentro de un evento)
+model Race {
+  id         String     @id @default(uuid())
+  eventId    String     @map("event_id")
+  categoryId String     @map("category_id")
+  roundCount Int        @default(4) @map("round_count") // M1, M2, M3, Final
+  status     RaceStatus @default(PENDING)
+  seedValue  String?    @map("seed_value") // For reproducible lane assignments
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  // Relations
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  motos    Moto[]
+
+  @@unique([eventId, categoryId])
+  @@map("races")
+}
+
+enum RaceStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+// Motos (3 clasificatorias + 1 final por defecto, configurable)
+model Moto {
+  id          String     @id @default(uuid())
+  raceId      String     @map("race_id")
+  orderNo     Int        @map("order_no")
+  type        MotoType
+  scheduledAt DateTime?  @map("scheduled_at")
+  status      MotoStatus @default(PENDING)
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  // Relations
+  race  Race   @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  heats Heat[]
+
+  @@map("motos")
+}
+
+enum MotoType {
+  M1
+  M2
+  M3
+  Final
+}
+
+enum MotoStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+// Heats (si hay más de 8 inscritos, varias mangas paralelas)
+model Heat {
+  id        String     @id @default(uuid())
+  motoId    String     @map("moto_id")
+  heatNo    Int        @map("heat_no")
+  status    HeatStatus @default(PENDING)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  // Relations
+  moto        Moto        @relation(fields: [motoId], references: [id], onDelete: Cascade)
+  heatEntries HeatEntry[]
+
+  @@map("heats")
+}
+
+enum HeatStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+// Heat Entries (asignación de carril - 8 carriles por largada)
+model HeatEntry {
+  id        String   @id @default(uuid())
+  heatId    String   @map("heat_id")
+  riderId   String   @map("rider_id")
+  gateNo    Int      @map("gate_no") // 1-8
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  heat   Heat     @relation(fields: [heatId], references: [id], onDelete: Cascade)
+  rider  Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  result Result?
+
+  @@unique([heatId, gateNo])
+  @@unique([heatId, riderId])
+  @@map("heat_entries")
+}
+
+// Results (posición y tiempos)
+model Result {
+  id           String       @id @default(uuid())
+  heatEntryId  String       @unique @map("heat_entry_id")
+  finishPos    Int?         @map("finish_pos")
+  timeMs       Int?         @map("time_ms") // Time in milliseconds
+  status       ResultStatus @default(OK)
+  notes        String?
+  recordedBy   String?      @map("recorded_by")
+  recordedAt   DateTime     @default(now()) @map("recorded_at")
+
+  // Relations
+  heatEntry HeatEntry @relation(fields: [heatEntryId], references: [id], onDelete: Cascade)
+  recorder  User?     @relation(fields: [recordedBy], references: [id])
+
+  @@map("results")
+}
+
+enum ResultStatus {
+  OK
+  DQ  // Disqualified
+  DNS // Did Not Start
+  DNF // Did Not Finish
+}
+
+// Points Table (tabla configurable: por defecto 1º=1 pto, 2º=2, … DNF=9)
+model PointsTable {
+  id        String   @id @default(uuid())
+  place     Int
+  points    Int
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("points_table")
+}
+
+// Audit Log (logs de auditoría)
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  action     String
+  entity     String
+  entityId   String   @map("entity_id")
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit")
+}
