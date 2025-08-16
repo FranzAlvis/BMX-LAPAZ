@@ -7,6 +7,7 @@ const router = express.Router();
 // Validation schemas
 const createEventSchema = Joi.object({
   name: Joi.string().min(3).max(255).required(),
+  description: Joi.string().max(1000).allow(''),
   date: Joi.date().required(),
   venue: Joi.string().min(3).max(255).required(),
   city: Joi.string().min(2).max(100).required(),
@@ -15,6 +16,7 @@ const createEventSchema = Joi.object({
 
 const updateEventSchema = Joi.object({
   name: Joi.string().min(3).max(255),
+  description: Joi.string().max(1000).allow(''),
   date: Joi.date(),
   venue: Joi.string().min(3).max(255),
   city: Joi.string().min(2).max(100),

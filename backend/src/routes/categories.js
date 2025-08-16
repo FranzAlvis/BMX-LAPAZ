@@ -24,8 +24,8 @@ const updateCategorySchema = Joi.object({
   isActive: Joi.boolean()
 });
 
-// GET /api/categories - List all categories
-router.get('/', authenticate, requireAnyRole, async (req, res, next) => {
+// GET /api/categories - List all categories (public access for dropdown)
+router.get('/', async (req, res, next) => {
   try {
     const { isActive = 'true', gender, wheel } = req.query;
 

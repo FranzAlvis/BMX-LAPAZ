@@ -72,24 +72,22 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const initializeAuth = async () => {
-    const savedToken = localStorage.getItem('bmx_token')
-    const savedUser = localStorage.getItem('bmx_user')
-    
+    const savedToken = localStorage.getItem('bmx_token');
+    const savedUser = localStorage.getItem('bmx_user');
+
     if (savedToken && savedUser) {
+      token.value = savedToken;
       try {
-        token.value = savedToken
-        user.value = JSON.parse(savedUser)
-        
-        // Verify token is still valid
-        await api.get('/api/auth/me')
-        
+        const freshUser = await api.get('/api/auth/me');
+        user.value = freshUser.data;
+        localStorage.setItem('bmx_user', JSON.stringify(user.value));
       } catch (error) {
-        // Token is invalid, clear everything
-        await logout()
+        // Token is invalid or user data is corrupted, clear everything
+        console.error('Authentication initialization failed, logging out.', error);
+        await logout();
       }
     }
-    
-    initialized.value = true
+    initialized.value = true;
   }
 
   const updateProfile = async (profileData) => {

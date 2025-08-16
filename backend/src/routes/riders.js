@@ -25,7 +25,8 @@ const createRiderSchema = Joi.object({
   gender: Joi.string().valid('M', 'F').required(),
   license: Joi.string().max(50).allow(''),
   phone: Joi.string().max(20).allow(''),
-  email: Joi.string().email().allow('')
+  email: Joi.string().email().allow(''),
+  categoryId: Joi.string().uuid().allow('')
 });
 
 const updateRiderSchema = Joi.object({
@@ -38,6 +39,7 @@ const updateRiderSchema = Joi.object({
   license: Joi.string().max(50).allow(''),
   phone: Joi.string().max(20).allow(''),
   email: Joi.string().email().allow(''),
+  categoryId: Joi.string().uuid().allow(''),
   isActive: Joi.boolean()
 });
 
@@ -83,6 +85,16 @@ router.get('/', authenticate, requireAnyRole, async (req, res, next) => {
           { firstName: 'asc' }
         ],
         include: {
+          category: {
+            select: {
+              id: true,
+              name: true,
+              minAge: true,
+              maxAge: true,
+              gender: true,
+              wheel: true
+            }
+          },
           _count: {
             select: {
               registrations: true

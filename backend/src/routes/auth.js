@@ -157,13 +157,15 @@ router.get('/me', authenticate, async (req, res, next) => {
         name: true,
         email: true,
         role: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true
+        isActive: true
       }
     });
 
-    res.json({ user });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(user);
   } catch (error) {
     next(error);
   }

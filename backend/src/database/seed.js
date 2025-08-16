@@ -29,22 +29,14 @@ async function main() {
   // Create default categories
   console.log('Creating default categories...');
   const categories = [
-    { name: '5-6 Años M', minAge: 5, maxAge: 6, gender: 'M', wheel: 'TWENTY_INCH' },
-    { name: '5-6 Años F', minAge: 5, maxAge: 6, gender: 'F', wheel: 'TWENTY_INCH' },
-    { name: '7-8 Años M', minAge: 7, maxAge: 8, gender: 'M', wheel: 'TWENTY_INCH' },
-    { name: '7-8 Años F', minAge: 7, maxAge: 8, gender: 'F', wheel: 'TWENTY_INCH' },
-    { name: '9-10 Años M', minAge: 9, maxAge: 10, gender: 'M', wheel: 'TWENTY_INCH' },
-    { name: '9-10 Años F', minAge: 9, maxAge: 10, gender: 'F', wheel: 'TWENTY_INCH' },
-    { name: '11-12 Años M', minAge: 11, maxAge: 12, gender: 'M', wheel: 'TWENTY_INCH' },
-    { name: '11-12 Años F', minAge: 11, maxAge: 12, gender: 'F', wheel: 'TWENTY_INCH' },
-    { name: '13-14 Años M', minAge: 13, maxAge: 14, gender: 'M', wheel: 'TWENTY_INCH' },
-    { name: '13-14 Años F', minAge: 13, maxAge: 14, gender: 'F', wheel: 'TWENTY_INCH' },
-    { name: '15-16 Años M', minAge: 15, maxAge: 16, gender: 'M', wheel: 'TWENTY_INCH' },
-    { name: '15-16 Años F', minAge: 15, maxAge: 16, gender: 'F', wheel: 'TWENTY_INCH' },
-    { name: '17+ Élite M', minAge: 17, maxAge: 99, gender: 'M', wheel: 'TWENTY_INCH' },
-    { name: '17+ Élite F', minAge: 17, maxAge: 99, gender: 'F', wheel: 'TWENTY_INCH' },
-    { name: 'Cruiser M', minAge: 17, maxAge: 99, gender: 'M', wheel: 'Cruiser' },
-    { name: 'Cruiser F', minAge: 17, maxAge: 99, gender: 'F', wheel: 'Cruiser' },
+    { name: 'STRIDERS', minAge: 2, maxAge: 4, gender: 'Mixed', wheel: 'TWENTY_INCH' },
+    { name: 'SUPER CLASS', minAge: 5, maxAge: 7, gender: 'Mixed', wheel: 'TWENTY_INCH' },
+    { name: 'CRUCEROS VARONES', minAge: 13, maxAge: 99, gender: 'M', wheel: 'Cruiser' },
+    { name: 'CRUCEROS DAMAS', minAge: 13, maxAge: 99, gender: 'F', wheel: 'Cruiser' },
+    { name: 'NOVATOS', minAge: 8, maxAge: 12, gender: 'Mixed', wheel: 'TWENTY_INCH' },
+    { name: 'EXPERTOS VARONES', minAge: 13, maxAge: 99, gender: 'M', wheel: 'TWENTY_INCH' },
+    { name: 'EXPERTOS DAMAS', minAge: 13, maxAge: 99, gender: 'F', wheel: 'TWENTY_INCH' },
+    { name: 'INICIALES', minAge: 8, maxAge: 15, gender: 'Mixed', wheel: 'TWENTY_INCH' },
   ];
 
   // Clear existing categories first
@@ -122,11 +114,10 @@ async function main() {
 
   // Create a sample event
   console.log('Creating sample event...');
-  const sampleEvent = await prisma.event.upsert({
-    where: { name: 'Campeonato BMX La Paz 2024' },
-    update: {},
-    create: {
+  const sampleEvent = await prisma.event.create({
+    data: {
       name: 'Campeonato BMX La Paz 2024',
+      description: 'Campeonato nacional de BMX en La Paz',
       date: new Date('2024-12-15'),
       venue: 'Pista BMX La Paz',
       city: 'La Paz',
@@ -138,11 +129,11 @@ async function main() {
   console.log('✅ Database seeding completed successfully!');
   console.log('');
   console.log('🔑 Default Login Credentials:');
-  console.log('Admin: admin@bmxlapaz.com / admin123');
-  console.log('Secretaria: secretaria@bmxlapaz.com / password123');
-  console.log('Cronometraje: cronometraje@bmxlapaz.com / password123');
-  console.log('Juez: juez@bmxlapaz.com / password123');
-  console.log('Público: publico@bmxlapaz.com / password123');
+  console.log('Admin: admin@bmx.com / admin123');
+  console.log('Secretaria: secretaria@bmx.com / secretaria123');
+  console.log('Cronometraje: cronometraje@bmx.com / cronometraje123');
+  console.log('Juez: juez@bmx.com / juez123');
+  console.log('Público: publico@bmx.com / publico123');
   console.log('');
   console.log(`📅 Sample Event Created: ${sampleEvent.name}`);
   console.log(`📊 Categories: ${categories.length} created`);

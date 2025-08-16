@@ -38,15 +38,16 @@ enum UserRole {
 
 // Events (campeonatos/fechas/sedes)
 model Event {
-  id        String      @id @default(uuid())
-  name      String
-  date      DateTime    @db.Date
-  venue     String
-  city      String
-  country   String      @default("Bolivia")
-  status    EventStatus @default(PLANNED)
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  date        DateTime    @db.Date
+  venue       String
+  city        String
+  country     String      @default("Bolivia")
+  status      EventStatus @default(PLANNED)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
 
   // Relations
   registrations Registration[]
@@ -75,6 +76,7 @@ model Category {
   createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
+  riders        Rider[]
   registrations Registration[]
   races         Race[]
 
@@ -105,11 +107,13 @@ model Rider {
   license     String?
   phone       String?
   email       String?
+  categoryId  String?   @map("category_id")
   isActive    Boolean   @default(true) @map("is_active")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
   // Relations
+  category      Category? @relation(fields: [categoryId], references: [id])
   registrations Registration[]
   heatEntries   HeatEntry[]
 

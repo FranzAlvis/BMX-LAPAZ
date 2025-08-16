@@ -42,10 +42,46 @@ const routes = [
         meta: { title: 'Dashboard' }
       },
       {
+        path: 'events/new',
+        name: 'CreateEvent',
+        component: () => import('@/views/CreateEventView.vue'),
+        meta: { roles: ['Admin', 'Secretaria'], title: 'Nuevo Evento' }
+      },
+      {
+        path: 'events/:id/edit',
+        name: 'EditEvent',
+        component: () => import('@/views/EditEventView.vue'),
+        meta: { roles: ['Admin', 'Secretaria'], title: 'Editar Evento' }
+      },
+      {
+        path: 'events/:id',
+        name: 'EventDetail',
+        component: () => import('@/views/EventDetailView.vue'),
+        meta: { roles: ['Admin', 'Secretaria', 'Cronometraje', 'Juez', 'Publico'], title: 'Detalle del Evento' }
+      },
+      {
         path: 'events',
         name: 'Events',
         component: EventsView,
         meta: { roles: ['Admin', 'Secretaria', 'Cronometraje', 'Juez', 'Publico'], title: 'Eventos' }
+      },
+      {
+        path: 'riders/new',
+        name: 'CreateRider',
+        component: () => import('@/views/CreateRiderView.vue'),
+        meta: { roles: ['Admin', 'Secretaria'], title: 'Nuevo Corredor' }
+      },
+      {
+        path: 'riders/:id/edit',
+        name: 'EditRider',
+        component: () => import('@/views/EditRiderView.vue'),
+        meta: { roles: ['Admin', 'Secretaria'], title: 'Editar Corredor' }
+      },
+      {
+        path: 'riders/:id',
+        name: 'RiderDetail',
+        component: () => import('@/views/RiderDetailView.vue'),
+        meta: { roles: ['Admin', 'Secretaria', 'Cronometraje', 'Juez', 'Publico'], title: 'Detalle del Corredor' }
       },
       {
         path: 'riders',
@@ -120,11 +156,8 @@ router.beforeEach(async (to, from, next) => {
   } else if (requiresGuest && authStore.isAuthenticated) {
     next('/')
   } else if (requiredRoles && authStore.isAuthenticated) {
-    if (!requiredRoles.includes(authStore.user?.role)) {
-      next('/')
-    } else {
-      next()
-    }
+    // Allow navigation but let individual components handle role-based UI
+    next()
   } else {
     next()
   }
