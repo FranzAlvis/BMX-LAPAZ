@@ -2,7 +2,7 @@ const { RateLimiterMemory } = require('rate-limiter-flexible');
 
 const rateLimiter = new RateLimiterMemory({
   keyGenerator: (req) => req.ip,
-  points: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+  points: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000,
   duration: parseInt(process.env.RATE_LIMIT_WINDOW_MS) / 1000 || 900, // 15 minutes
 });
 

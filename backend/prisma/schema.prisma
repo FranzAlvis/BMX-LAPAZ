@@ -52,6 +52,7 @@ model Event {
   // Relations
   registrations Registration[]
   races         Race[]
+  eventRegistrationSummaries EventRegistrationSummary[]
 
   @@map("events")
 }
@@ -79,6 +80,7 @@ model Category {
   riders        Rider[]
   registrations Registration[]
   races         Race[]
+  eventRegistrationSummaries EventRegistrationSummary[]
 
   @@map("categories")
 }
@@ -142,6 +144,24 @@ model Registration {
 
   @@unique([eventId, categoryId, riderId])
   @@map("registrations")
+}
+
+// Event Registration Summary (vista agregada para mejor organización)
+model EventRegistrationSummary {
+  id                String   @id @default(uuid())
+  eventId           String   @map("event_id")
+  categoryId        String   @map("category_id")
+  totalRegistered   Int      @default(0) @map("total_registered")
+  confirmedCount    Int      @default(0) @map("confirmed_count")
+  cancelledCount    Int      @default(0) @map("cancelled_count")
+  lastUpdated       DateTime @default(now()) @updatedAt @map("last_updated")
+
+  // Relations
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, categoryId])
+  @@map("event_registration_summaries")
 }
 
 enum RegistrationStatus {

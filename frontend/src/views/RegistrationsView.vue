@@ -1,65 +1,92 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useRegistrationsStore } from '@/stores/registrations'
 import { useEventsStore } from '@/stores/events'
-import { useCategoriesStore } from '@/stores/categories'
 import { useAuthStore } from '@/stores/auth'
-import DeleteRegistrationModal from '@/components/DeleteRegistrationModal.vue'
+import api from '@/services/api'
 import {
   ClipboardDocumentListIcon,
   PlusIcon,
-  MagnifyingGlassIcon,
-  FunnelIcon,
-  EyeIcon,
-  PencilIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  UserGroupIcon,
   TrashIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ClockIcon
+  EyeIcon,
+  PencilIcon
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
-const registrationsStore = useRegistrationsStore()
 const eventsStore = useEventsStore()
-const categoriesStore = useCategoriesStore()
 const authStore = useAuthStore()
 
-const searchQuery = ref('')
-const selectedEvent = ref('')
-const selectedCategory = ref('')
-const statusFilter = ref('all')
-const showFilters = ref(false)
-const showDeleteModal = ref(false)
-const registrationToDelete = ref(null)
+const loading = ref(false)
+const eventsWithRegistrations = ref([])
+const expandedEvents = ref(new Set())
+const expandedCategories = ref(new Set())
 
-const filteredRegistrations = computed(() => {
-  let filtered = registrationsStore.registrations
-
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(reg => 
-      reg.rider?.firstName.toLowerCase().includes(query) ||
-      reg.rider?.lastName.toLowerCase().includes(query) ||
-      reg.event?.name.toLowerCase().includes(query) ||
-      reg.category?.name.toLowerCase().includes(query)
-    )
+const toggleEventExpansion = (eventId) => {
+  if (expandedEvents.value.has(eventId)) {
+    expandedEvents.value.delete(eventId)
+  } else {
+    expandedEvents.value.add(eventId)
   }
+}
 
-  if (selectedEvent.value) {
-    filtered = filtered.filter(reg => reg.eventId === selectedEvent.value)
+const toggleCategoryExpansion = (categoryId) => {
+  if (expandedCategories.value.has(categoryId)) {
+    expandedCategories.value.delete(categoryId)
+  } else {
+    expandedCategories.value.add(categoryId)
   }
+}
 
-  if (selectedCategory.value) {
-    filtered = filtered.filter(reg => reg.categoryId === selectedCategory.value)
+const fetchEventsWithRegistrations = async () => {
+  try {
+    loading.value = true
+    const events = await eventsStore.fetchEvents()
+    
+    const eventsWithData = []
+    
+    for (const event of eventsStore.events) {
+      try {
+        const response = await api.get(`/api/events/${event.id}/registrations-summary`)
+        eventsWithData.push(response.data)
+      } catch (err) {
+        console.error(`Error fetching registrations for event ${event.id}:`, err)
+      }
+    }
+    
+    eventsWithRegistrations.value = eventsWithData
+  } catch (error) {
+    console.error('Error fetching events with registrations:', error)
+  } finally {
+    loading.value = false
   }
+}
 
-  if (statusFilter.value !== 'all') {
-    filtered = filtered.filter(reg => reg.status === statusFilter.value)
+const deleteRegistration = async (registrationId, eventId) => {
+  if (!confirm('¿Estás seguro de que quieres eliminar esta inscripción?')) return
+  
+  try {
+    await api.delete(`/api/registrations/${registrationId}`)
+    // Refresh the specific event data
+    await fetchEventsWithRegistrations()
+  } catch (error) {
+    console.error('Error deleting registration:', error)
   }
+}
 
-  return filtered
+const canEdit = computed(() => {
+  return authStore.userRole === 'Admin' || authStore.userRole === 'Secretaria'
 })
+
+const goToCreate = () => {
+  router.push('/registrations/new')
+}
+
+const editEventRegistrations = (eventId) => {
+  router.push(`/registrations/edit/${eventId}`)
+}
 
 const canManageRegistrations = computed(() => 
   authStore.canAccess(['Admin', 'Secretaria'])
@@ -114,231 +141,201 @@ const cancelDelete = () => {
 }
 
 onMounted(async () => {
-  await Promise.all([
-    registrationsStore.fetchRegistrations(),
-    eventsStore.fetchEvents(),
-    categoriesStore.fetchCategories()
-  ])
+  await fetchEventsWithRegistrations()
 })
 </script>
 
 <template>
-  <div>
-    <!-- Header -->
-    <div class="sm:flex sm:items-center sm:justify-between mb-6">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">Inscripciones</h1>
-        <p class="mt-2 text-sm text-gray-700">
-          Gestiona las inscripciones de corredores a eventos
-        </p>
+  <div class="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Header -->
+      <div class="sm:flex sm:items-center sm:justify-between mb-8">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900 flex items-center">
+            <ClipboardDocumentListIcon class="h-8 w-8 mr-3 text-orange-600" />
+            Inscripciones por Evento
+          </h1>
+          <p class="mt-2 text-gray-600">
+            Vista jerárquica: Eventos → Categorías → Corredores
+          </p>
+        </div>
+        <div class="mt-4 sm:mt-0">
+          <button
+            v-if="canEdit"
+            @click="goToCreate"
+            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+          >
+            <PlusIcon class="-ml-1 mr-2 h-5 w-5" />
+            Nueva Inscripción
+          </button>
+        </div>
       </div>
-      <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex items-center space-x-3">
-        <button
-          @click="showFilters = !showFilters"
-          class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-        >
-          <FunnelIcon class="-ml-1 mr-2 h-5 w-5 text-gray-400" />
-          Filtros
-        </button>
 
-        <router-link
-          v-if="canManageRegistrations"
-          to="/registrations/new"
-          class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bmx-gradient hover:opacity-90"
-        >
-          <PlusIcon class="-ml-1 mr-2 h-5 w-5" />
-          Nueva Inscripción
-        </router-link>
+      <!-- Loading State -->
+      <div v-if="loading" class="flex justify-center items-center py-12">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+        <span class="ml-3 text-gray-600">Cargando inscripciones...</span>
       </div>
-    </div>
 
-    <!-- Filters -->
-    <div v-if="showFilters" class="bg-white shadow rounded-lg mb-6">
-      <div class="px-4 py-5 sm:p-6">
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Buscar</label>
-            <div class="mt-1 relative">
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Corredor, evento o categoría..."
-                class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              />
+      <!-- Events List -->
+      <div v-else-if="eventsWithRegistrations.length > 0" class="space-y-6">
+        <div v-for="eventData in eventsWithRegistrations" :key="eventData.event.id" 
+             class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          
+          <!-- Event Header -->
+          <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <div class="flex items-center justify-between">
+              <button
+                @click="toggleEventExpansion(eventData.event.id)"
+                class="flex items-center text-left hover:bg-gray-100 rounded-lg px-2 py-1 -mx-2 -my-1 flex-1"
+              >
+                <component 
+                  :is="expandedEvents.has(eventData.event.id) ? ChevronDownIcon : ChevronRightIcon"
+                  class="h-5 w-5 text-gray-400 mr-2"
+                />
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-900">{{ eventData.event.name }}</h3>
+                  <p class="text-sm text-gray-600">
+                    {{ formatDate(eventData.event.date) }} • {{ eventData.event.venue }}, {{ eventData.event.city }}
+                  </p>
+                </div>
+              </button>
+              <div class="flex items-center space-x-4">
+                <div class="text-right">
+                  <div class="text-sm font-medium text-gray-900">
+                    {{ eventData.event.totalRegistrations }} inscripciones
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    {{ eventData.categories.length }} categorías
+                  </div>
+                </div>
+                <div class="px-3 py-1 rounded-full text-xs font-medium"
+                     :class="{
+                       'bg-green-100 text-green-800': eventData.event.status === 'SCHEDULED',
+                       'bg-blue-100 text-blue-800': eventData.event.status === 'ACTIVE',
+                       'bg-gray-100 text-gray-800': eventData.event.status === 'COMPLETED',
+                       'bg-red-100 text-red-800': eventData.event.status === 'CANCELLED'
+                     }">
+                  {{ eventData.event.status }}
+                </div>
+                <button
+                  v-if="canEdit"
+                  @click="editEventRegistrations(eventData.event.id)"
+                  class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                  title="Editar inscripciones del evento"
+                >
+                  <PencilIcon class="h-4 w-4 mr-1" />
+                  Editar
+                </button>
+              </div>
             </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Evento</label>
-            <select
-              v-model="selectedEvent"
-              class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            >
-              <option value="">Todos los eventos</option>
-              <option v-for="event in eventsStore.events" :key="event.id" :value="event.id">
-                {{ event.name }}
-              </option>
-            </select>
-          </div>
+          <!-- Categories (Expandable) -->
+          <div v-if="expandedEvents.has(eventData.event.id)" class="divide-y divide-gray-100">
+            <div v-for="category in eventData.categories" :key="category.id" class="px-6 py-3">
+              
+              <!-- Category Header -->
+              <button
+                @click="toggleCategoryExpansion(category.id)"
+                class="w-full flex items-center justify-between text-left hover:bg-gray-50 rounded-lg px-2 py-1 -mx-2 -my-1"
+              >
+                <div class="flex items-center">
+                  <component 
+                    :is="expandedCategories.has(category.id) ? ChevronDownIcon : ChevronRightIcon"
+                    class="h-4 w-4 text-gray-400 mr-2 ml-4"
+                  />
+                  <UserGroupIcon class="h-5 w-5 text-orange-500 mr-2" />
+                  <div>
+                    <span class="font-medium text-gray-900">{{ category.name }}</span>
+                    <span class="ml-2 text-sm text-gray-500">
+                      ({{ category.gender }}, {{ category.wheel }}, {{ category.minAge }}-{{ category.maxAge }} años)
+                    </span>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <span class="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
+                    {{ category.totalRegistered }} corredores
+                  </span>
+                </div>
+              </button>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Categoría</label>
-            <select
-              v-model="selectedCategory"
-              class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            >
-              <option value="">Todas las categorías</option>
-              <option v-for="category in categoriesStore.categories" :key="category.id" :value="category.id">
-                {{ category.name }}
-              </option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Estado</label>
-            <select
-              v-model="statusFilter"
-              class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            >
-              <option value="all">Todos</option>
-              <option value="REGISTERED">Registradas</option>
-              <option value="CONFIRMED">Confirmadas</option>
-              <option value="CANCELLED">Canceladas</option>
-            </select>
+              <!-- Riders List (Expandable) -->
+              <div v-if="expandedCategories.has(category.id)" class="mt-3 ml-10">
+                <div v-if="category.registrations.length === 0" class="text-sm text-gray-500 italic">
+                  No hay corredores inscritos en esta categoría
+                </div>
+                <div v-else class="space-y-2">
+                  <div v-for="registration in category.registrations" :key="registration.id"
+                       class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center">
+                      <div class="flex-shrink-0 h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
+                        <span class="text-xs font-medium text-gray-700">
+                          {{ registration.rider.firstName?.charAt(0) }}{{ registration.rider.lastName?.charAt(0) }}
+                        </span>
+                      </div>
+                      <div class="ml-3">
+                        <div class="text-sm font-medium text-gray-900">
+                          {{ registration.rider.firstName }} {{ registration.rider.lastName }}
+                        </div>
+                        <div class="text-xs text-gray-500">
+                          Placa: {{ registration.rider.plate }} • {{ registration.rider.club || 'Sin club' }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <span class="px-2 py-1 text-xs font-medium rounded-full"
+                            :class="{
+                              'bg-green-100 text-green-800': registration.status === 'CONFIRMED',
+                              'bg-yellow-100 text-yellow-800': registration.status === 'REGISTERED',
+                              'bg-red-100 text-red-800': registration.status === 'CANCELLED'
+                            }">
+                        {{ registration.status }}
+                      </span>
+                      <button
+                        v-if="canEdit"
+                        @click="editEventRegistrations(eventData.event.id)"
+                        class="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded mr-1"
+                        title="Editar inscripciones del evento"
+                      >
+                        <PencilIcon class="h-4 w-4" />
+                      </button>
+                      <button
+                        v-if="canEdit"
+                        @click="deleteRegistration(registration.id, eventData.event.id)"
+                        class="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                        title="Eliminar inscripción"
+                      >
+                        <TrashIcon class="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Registrations Table -->
-    <div v-if="filteredRegistrations.length > 0" class="bg-white shadow overflow-hidden sm:rounded-lg">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Corredor
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Evento
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Categoría
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Fecha Inscripción
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Estado
-              </th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="registration in filteredRegistrations" :key="registration.id" class="hover:bg-gray-50">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0 h-10 w-10">
-                    <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                      <span class="text-sm font-medium text-blue-800">
-                        {{ registration.rider?.firstName?.charAt(0) }}{{ registration.rider?.lastName?.charAt(0) }}
-                      </span>
-                    </div>
-                  </div>
-                  <div class="ml-4">
-                    <div class="text-sm font-medium text-gray-900">
-                      {{ registration.rider?.firstName }} {{ registration.rider?.lastName }}
-                    </div>
-                    <div class="text-sm text-gray-500">
-                      {{ registration.rider?.club || 'Sin club' }}
-                    </div>
-                  </div>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <div>{{ registration.event?.name }}</div>
-                <div class="text-gray-500">{{ formatDate(registration.event?.date) }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ registration.category?.name }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ formatDate(registration.createdAt) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <component
-                    :is="getStatusIcon(registration.status)"
-                    class="h-4 w-4 mr-2"
-                    :class="registration.status === 'CONFIRMED' ? 'text-green-500' : 
-                            registration.status === 'REGISTERED' ? 'text-blue-500' : 'text-red-500'"
-                  />
-                  <span
-                    :class="[
-                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                      getStatusColor(registration.status)
-                    ]"
-                  >
-                    {{ registration.status === 'REGISTERED' ? 'Registrada' : 
-                       registration.status === 'CONFIRMED' ? 'Confirmada' : 'Cancelada' }}
-                  </span>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div class="flex items-center justify-end space-x-2">
-                  <router-link
-                    :to="`/registrations/${registration.id}`"
-                    class="inline-flex items-center p-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                    title="Ver detalles"
-                  >
-                    <EyeIcon class="h-4 w-4" />
-                  </router-link>
-
-                  <router-link
-                    v-if="canManageRegistrations"
-                    :to="`/registrations/${registration.id}/edit`"
-                    class="inline-flex items-center p-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                    title="Editar"
-                  >
-                    <PencilIcon class="h-4 w-4" />
-                  </router-link>
-
-                  <button
-                    v-if="canManageRegistrations"
-                    @click="handleDeleteRegistration(registration)"
-                    class="inline-flex items-center p-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-white hover:bg-red-50"
-                    title="Eliminar"
-                  >
-                    <TrashIcon class="h-4 w-4" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Empty State -->
+      <div v-else class="text-center py-12">
+        <ClipboardDocumentListIcon class="mx-auto h-12 w-12 text-gray-400" />
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No hay eventos con inscripciones</h3>
+        <p class="mt-1 text-sm text-gray-500">
+          Comienza creando una nueva inscripción para un evento.
+        </p>
+        <div class="mt-6">
+          <button
+            v-if="canEdit"
+            @click="goToCreate"
+            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700"
+          >
+            <PlusIcon class="-ml-1 mr-2 h-5 w-5" />
+            Nueva Inscripción
+          </button>
+        </div>
       </div>
     </div>
-
-    <!-- Empty State -->
-    <div v-else class="text-center py-12">
-      <ClipboardDocumentListIcon class="mx-auto h-12 w-12 text-gray-400" />
-      <h3 class="mt-2 text-sm font-medium text-gray-900">No hay inscripciones</h3>
-      <p class="mt-1 text-sm text-gray-500">
-        {{ searchQuery || selectedEvent || selectedCategory || statusFilter !== 'all' 
-           ? 'No se encontraron inscripciones con los filtros aplicados.' 
-           : 'Comienza agregando una nueva inscripción.' }}
-      </p>
-    </div>
-
-    <!-- Delete Modal -->
-    <DeleteRegistrationModal 
-      :show="showDeleteModal" 
-      :registration="registrationToDelete"
-      @close="cancelDelete" 
-      @confirm="confirmDelete" 
-    />
   </div>
 </template>
 

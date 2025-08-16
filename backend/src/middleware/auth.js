@@ -6,12 +6,24 @@ const prisma = new PrismaClient();
 // Authentication middleware
 const authenticate = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    // Extract token from Authorization header
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') 
+      ? authHeader.substring(7) 
+      : null;
     
     if (!token) {
       return res.status(401).json({
         error: 'Unauthorized',
         message: 'Access token required'
+      });
+    }
+
+    // Check if token is malformed
+    if (!token || token === 'null' || token === 'undefined' || token.length < 10) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid token format'
       });
     }
 

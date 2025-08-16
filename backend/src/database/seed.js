@@ -83,32 +83,64 @@ async function main() {
     });
   }
 
-  // Create sample riders
-  console.log('Creating sample riders...');
+  // Get created categories for assignment
+  const createdCategories = await prisma.category.findMany({});
+  const striders = createdCategories.find(c => c.name === 'STRIDERS');
+  const superClass = createdCategories.find(c => c.name === 'SUPER CLASS');
+  const novatos = createdCategories.find(c => c.name === 'NOVATOS');
+  const expertosVarones = createdCategories.find(c => c.name === 'EXPERTOS VARONES');
+  const expertosDamas = createdCategories.find(c => c.name === 'EXPERTOS DAMAS');
+  const crucerosVarones = createdCategories.find(c => c.name === 'CRUCEROS VARONES');
+  const crucerosDamas = createdCategories.find(c => c.name === 'CRUCEROS DAMAS');
+  const iniciales = createdCategories.find(c => c.name === 'INICIALES');
+
+  // Create sample riders with category assignments
+  console.log('Creating sample riders with categories...');
   const riders = [
-    { plate: 1, firstName: 'Juan', lastName: 'Pérez', club: 'BMX La Paz', dateOfBirth: new Date('2010-03-15'), gender: 'M' },
-    { plate: 2, firstName: 'María', lastName: 'García', club: 'BMX La Paz', dateOfBirth: new Date('2011-07-22'), gender: 'F' },
-    { plate: 3, firstName: 'Carlos', lastName: 'López', club: 'Riders Unidos', dateOfBirth: new Date('2009-12-10'), gender: 'M' },
-    { plate: 4, firstName: 'Ana', lastName: 'Martínez', club: 'BMX La Paz', dateOfBirth: new Date('2012-05-18'), gender: 'F' },
-    { plate: 5, firstName: 'Diego', lastName: 'Rodríguez', club: 'Velocidad BMX', dateOfBirth: new Date('2008-09-03'), gender: 'M' },
-    { plate: 6, firstName: 'Sofía', lastName: 'Hernández', club: 'BMX La Paz', dateOfBirth: new Date('2010-11-25'), gender: 'F' },
-    { plate: 7, firstName: 'Miguel', lastName: 'Torres', club: 'Riders Unidos', dateOfBirth: new Date('2007-04-12'), gender: 'M' },
-    { plate: 8, firstName: 'Valentina', lastName: 'Flores', club: 'Velocidad BMX', dateOfBirth: new Date('2009-08-30'), gender: 'F' },
-    { plate: 9, firstName: 'Andrés', lastName: 'Morales', club: 'BMX La Paz', dateOfBirth: new Date('2006-01-20'), gender: 'M' },
-    { plate: 10, firstName: 'Isabella', lastName: 'Vargas', club: 'Riders Unidos', dateOfBirth: new Date('2008-06-14'), gender: 'F' },
-    { plate: 11, firstName: 'Santiago', lastName: 'Jiménez', club: 'Velocidad BMX', dateOfBirth: new Date('2005-10-08'), gender: 'M' },
-    { plate: 12, firstName: 'Camila', lastName: 'Ruiz', club: 'BMX La Paz', dateOfBirth: new Date('2007-02-28'), gender: 'F' },
-    { plate: 13, firstName: 'Mateo', lastName: 'Castillo', club: 'Riders Unidos', dateOfBirth: new Date('2004-12-05'), gender: 'M' },
-    { plate: 14, firstName: 'Lucía', lastName: 'Mendoza', club: 'Velocidad BMX', dateOfBirth: new Date('2006-09-17'), gender: 'F' },
-    { plate: 15, firstName: 'Sebastián', lastName: 'Ortega', club: 'BMX La Paz', dateOfBirth: new Date('2003-05-11'), gender: 'M' },
-    { plate: 16, firstName: 'Gabriela', lastName: 'Silva', club: 'Riders Unidos', dateOfBirth: new Date('2004-08-23'), gender: 'F' },
+    // STRIDERS (2-4 años)
+    { plate: 1, firstName: 'Matías', lastName: 'Pérez', club: 'BMX La Paz', dateOfBirth: new Date('2021-03-15'), gender: 'M', categoryId: striders?.id },
+    { plate: 2, firstName: 'Sofía', lastName: 'García', club: 'BMX La Paz', dateOfBirth: new Date('2022-07-22'), gender: 'F', categoryId: striders?.id },
+    
+    // SUPER CLASS (5-7 años)
+    { plate: 3, firstName: 'Diego', lastName: 'López', club: 'Riders Unidos', dateOfBirth: new Date('2018-12-10'), gender: 'M', categoryId: superClass?.id },
+    { plate: 4, firstName: 'Emma', lastName: 'Martínez', club: 'BMX La Paz', dateOfBirth: new Date('2019-05-18'), gender: 'F', categoryId: superClass?.id },
+    
+    // NOVATOS (8-12 años)
+    { plate: 5, firstName: 'Carlos', lastName: 'Rodríguez', club: 'Velocidad BMX', dateOfBirth: new Date('2015-09-03'), gender: 'M', categoryId: novatos?.id },
+    { plate: 6, firstName: 'Valentina', lastName: 'Hernández', club: 'BMX La Paz', dateOfBirth: new Date('2014-11-25'), gender: 'F', categoryId: novatos?.id },
+    { plate: 7, firstName: 'Miguel', lastName: 'Torres', club: 'Riders Unidos', dateOfBirth: new Date('2013-04-12'), gender: 'M', categoryId: novatos?.id },
+    { plate: 8, firstName: 'Isabella', lastName: 'Flores', club: 'Velocidad BMX', dateOfBirth: new Date('2012-08-30'), gender: 'F', categoryId: novatos?.id },
+    
+    // INICIALES (8-15 años)
+    { plate: 9, firstName: 'Andrés', lastName: 'Morales', club: 'BMX La Paz', dateOfBirth: new Date('2011-01-20'), gender: 'M', categoryId: iniciales?.id },
+    { plate: 10, firstName: 'Camila', lastName: 'Vargas', club: 'Riders Unidos', dateOfBirth: new Date('2010-06-14'), gender: 'F', categoryId: iniciales?.id },
+    
+    // EXPERTOS VARONES (13+ años)
+    { plate: 11, firstName: 'Santiago', lastName: 'Jiménez', club: 'Velocidad BMX', dateOfBirth: new Date('2005-10-08'), gender: 'M', categoryId: expertosVarones?.id },
+    { plate: 12, firstName: 'Mateo', lastName: 'Castillo', club: 'Riders Unidos', dateOfBirth: new Date('2004-12-05'), gender: 'M', categoryId: expertosVarones?.id },
+    { plate: 13, firstName: 'Sebastián', lastName: 'Ortega', club: 'BMX La Paz', dateOfBirth: new Date('2003-05-11'), gender: 'M', categoryId: expertosVarones?.id },
+    { plate: 14, firstName: 'Alejandro', lastName: 'Mendoza', club: 'Velocidad BMX', dateOfBirth: new Date('2002-09-17'), gender: 'M', categoryId: expertosVarones?.id },
+    
+    // EXPERTOS DAMAS (13+ años)
+    { plate: 15, firstName: 'Lucía', lastName: 'Ruiz', club: 'BMX La Paz', dateOfBirth: new Date('2006-02-28'), gender: 'F', categoryId: expertosDamas?.id },
+    { plate: 16, firstName: 'Gabriela', lastName: 'Silva', club: 'Riders Unidos', dateOfBirth: new Date('2004-08-23'), gender: 'F', categoryId: expertosDamas?.id },
+    { plate: 17, firstName: 'María', lastName: 'Vega', club: 'Velocidad BMX', dateOfBirth: new Date('2003-11-15'), gender: 'F', categoryId: expertosDamas?.id },
+    
+    // CRUCEROS VARONES (13+ años)
+    { plate: 18, firstName: 'Roberto', lastName: 'Chávez', club: 'BMX La Paz', dateOfBirth: new Date('2001-03-20'), gender: 'M', categoryId: crucerosVarones?.id },
+    { plate: 19, firstName: 'Fernando', lastName: 'Moreno', club: 'Riders Unidos', dateOfBirth: new Date('2000-07-12'), gender: 'M', categoryId: crucerosVarones?.id },
+    
+    // CRUCEROS DAMAS (13+ años)
+    { plate: 20, firstName: 'Ana', lastName: 'Delgado', club: 'Velocidad BMX', dateOfBirth: new Date('2001-09-08'), gender: 'F', categoryId: crucerosDamas?.id },
+    { plate: 21, firstName: 'Patricia', lastName: 'Romero', club: 'BMX La Paz', dateOfBirth: new Date('2000-12-03'), gender: 'F', categoryId: crucerosDamas?.id },
   ];
 
+  // Clear existing riders first
+  await prisma.rider.deleteMany({});
+
   for (const rider of riders) {
-    await prisma.rider.upsert({
-      where: { plate: rider.plate },
-      update: rider,
-      create: rider,
+    await prisma.rider.create({
+      data: rider,
     });
   }
 
@@ -137,7 +169,8 @@ async function main() {
   console.log('');
   console.log(`📅 Sample Event Created: ${sampleEvent.name}`);
   console.log(`📊 Categories: ${categories.length} created`);
-  console.log(`🏃 Riders: ${riders.length} created`);
+  console.log(`🏃 Riders: ${riders.length} created with category assignments`);
+
 }
 
 main()

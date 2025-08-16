@@ -44,6 +44,7 @@ router.get('/', async (req, res, next) => {
       include: {
         _count: {
           select: {
+            riders: true,
             registrations: true,
             races: true
           }

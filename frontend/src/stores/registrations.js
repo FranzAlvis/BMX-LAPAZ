@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 
 export const useRegistrationsStore = defineStore('registrations', () => {
   const registrations = ref([])
@@ -12,12 +12,7 @@ export const useRegistrationsStore = defineStore('registrations', () => {
       loading.value = true
       error.value = null
       
-      const response = await axios.get('http://localhost:3000/api/registrations', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        params
-      })
+      const response = await api.get('/api/registrations', { params })
       
       registrations.value = response.data.registrations || []
       
@@ -36,11 +31,7 @@ export const useRegistrationsStore = defineStore('registrations', () => {
 
   const createRegistration = async (registrationData) => {
     try {
-      const response = await axios.post('http://localhost:3000/api/registrations', registrationData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
+      const response = await api.post('/api/registrations', registrationData)
       
       registrations.value.push(response.data.registration)
       return response.data.registration
@@ -56,11 +47,7 @@ export const useRegistrationsStore = defineStore('registrations', () => {
 
   const updateRegistration = async (id, registrationData) => {
     try {
-      const response = await axios.put(`http://localhost:3000/api/registrations/${id}`, registrationData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
+      const response = await api.put(`/api/registrations/${id}`, registrationData)
       
       const index = registrations.value.findIndex(r => r.id === id)
       if (index !== -1) {
@@ -79,11 +66,7 @@ export const useRegistrationsStore = defineStore('registrations', () => {
 
   const deleteRegistration = async (id) => {
     try {
-      await axios.delete(`http://localhost:3000/api/registrations/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
+      await api.delete(`/api/registrations/${id}`)
       
       registrations.value = registrations.value.filter(r => r.id !== id)
     } catch (err) {

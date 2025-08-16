@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import api from '@/services/api'
+import { useCategoriesStore } from '@/stores/categories'
 import { useToast } from 'vue-toastification'
 import {
   PlusIcon,
@@ -15,19 +15,18 @@ import {
 
 const router = useRouter()
 const authStore = useAuthStore()
+const categoriesStore = useCategoriesStore()
 const toast = useToast()
 
-const categories = ref([])
 const searchQuery = ref('')
-const loading = ref(false)
 const showDeleteModal = ref(false)
 const categoryToDelete = ref(null)
 
 const filteredCategories = computed(() => {
-  if (!searchQuery.value) return categories.value
+  if (!searchQuery.value) return categoriesStore.categories
   
   const query = searchQuery.value.toLowerCase()
-  return categories.value.filter(category => 
+  return categoriesStore.categories.filter(category => 
     category.name.toLowerCase().includes(query) ||
     category.description?.toLowerCase().includes(query)
   )
@@ -37,18 +36,6 @@ const canManageCategories = computed(() =>
   authStore.canAccess(['Admin', 'Secretaria'])
 )
 
-const fetchCategories = async () => {
-  try {
-    loading.value = true
-    const response = await api.get('/api/categories')
-    categories.value = response.data.categories
-  } catch (error) {
-    toast.error('Error al cargar categorías')
-  } finally {
-    loading.value = false
-  }
-}
-
 const handleDeleteCategory = (category) => {
   categoryToDelete.value = category
   showDeleteModal.value = true
@@ -57,8 +44,7 @@ const handleDeleteCategory = (category) => {
 const confirmDelete = async () => {
   if (categoryToDelete.value) {
     try {
-      await api.delete(`/api/categories/${categoryToDelete.value.id}`)
-      categories.value = categories.value.filter(cat => cat.id !== categoryToDelete.value.id)
+      await categoriesStore.deleteCategory(categoryToDelete.value.id)
       toast.success('Categoría eliminada correctamente')
       showDeleteModal.value = false
       categoryToDelete.value = null
@@ -74,7 +60,7 @@ const cancelDelete = () => {
 }
 
 onMounted(() => {
-  fetchCategories()
+  categoriesStore.fetchCategories()
 })
 </script>
 
@@ -123,7 +109,7 @@ onMounted(() => {
     </div>
 
     <!-- Loading state -->
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <div v-if="categoriesStore.loading" class="flex items-center justify-center py-12">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
     </div>
 
@@ -149,13 +135,6 @@ onMounted(() => {
             
             <!-- Actions -->
             <div class="flex items-center space-x-2">
-              <router-link
-                :to="`/categories/${category.id}`"
-                class="inline-flex items-center p-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                title="Ver detalles"
-              >
-                <EyeIcon class="h-4 w-4" />
-              </router-link>
 
               <router-link
                 v-if="canManageCategories"
@@ -213,8 +192,8 @@ onMounted(() => {
 
             <div v-if="category._count" class="pt-3 border-t border-gray-200">
               <div class="text-sm text-gray-500">
-                <span class="font-medium">{{ category._count.registrations || 0 }}</span>
-                corredor{{ (category._count.registrations || 0) !== 1 ? 'es' : '' }} registrado{{ (category._count.registrations || 0) !== 1 ? 's' : '' }}
+                <span class="font-medium">{{ category._count.riders || 0 }}</span>
+                corredor{{ (category._count.riders || 0) !== 1 ? 'es' : '' }} registrado{{ (category._count.riders || 0) !== 1 ? 's' : '' }}
               </div>
             </div>
           </div>

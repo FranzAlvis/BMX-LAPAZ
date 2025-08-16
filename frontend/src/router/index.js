@@ -90,10 +90,42 @@ const routes = [
         meta: { roles: ['Admin', 'Secretaria', 'Cronometraje', 'Juez', 'Publico'], title: 'Corredores' }
       },
       {
+        path: 'categories/new',
+        name: 'CreateCategory',
+        component: () => import('@/views/CreateCategoryView.vue'),
+        meta: { roles: ['Admin', 'Secretaria'], title: 'Nueva Categoría' }
+      },
+      {
+        path: 'categories/:id/edit',
+        name: 'EditCategory',
+        component: () => import('@/views/EditCategoryView.vue'),
+        meta: { roles: ['Admin', 'Secretaria'], title: 'Editar Categoría' }
+      },
+      {
         path: 'categories',
         name: 'Categories',
         component: CategoriesView,
         meta: { roles: ['Admin', 'Secretaria'], title: 'Categorías' }
+      },
+      {
+        path: '/registrations/new',
+        name: 'CreateRegistration',
+        component: () => import('@/views/CreateRegistrationView.vue'),
+        meta: {
+          requiresAuth: true,
+          roles: ['Admin', 'Secretaria'],
+          title: 'Nueva Inscripción'
+        }
+      },
+      {
+        path: '/registrations/edit/:eventId?',
+        name: 'EditEventRegistrations',
+        component: () => import('@/views/EditEventRegistrationsView.vue'),
+        meta: {
+          requiresAuth: true,
+          roles: ['Admin', 'Secretaria'],
+          title: 'Editar Inscripciones'
+        }
       },
       {
         path: 'registrations',

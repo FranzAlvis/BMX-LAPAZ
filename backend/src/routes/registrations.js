@@ -604,4 +604,61 @@ router.get('/event/:eventId/category/:categoryId', authenticate, requireAnyRole,
   }
 });
 
+// DELETE /api/registrations/:id - Delete registration
+router.delete('/:id', authenticate, requireSecretaria, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const registration = await req.prisma.registration.findUnique({
+      where: { id },
+      include: {
+        event: {
+          select: {
+            id: true,
+            name: true,
+            date: true,
+            status: true
+          }
+        },
+        category: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        rider: {
+          select: {
+            id: true,
+            plate: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    });
+
+    if (!registration) {
+      return res.status(404).json({ message: 'Inscripción no encontrada' });
+    }
+
+    // Check if event is still active/planned (can't delete from completed events)
+    if (registration.event.status === 'COMPLETED') {
+      return res.status(400).json({ 
+        message: 'No se puede eliminar inscripciones de eventos completados' 
+      });
+    }
+
+    await req.prisma.registration.delete({
+      where: { id }
+    });
+
+    res.json({ 
+      message: 'Inscripción eliminada correctamente',
+      registration 
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

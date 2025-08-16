@@ -31,7 +31,11 @@ router.get('/', authenticate, requireAnyRole, async (req, res, next) => {
     const skip = (page - 1) * limit;
 
     const where = {};
-    if (status) where.status = status;
+    if (status) {
+      // Handle comma-separated status values
+      const statusArray = status.split(',').map(s => s.trim());
+      where.status = { in: statusArray };
+    }
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -403,6 +407,295 @@ router.get('/:id/dashboard', authenticate, requireAnyRole, async (req, res, next
     };
 
     res.json({ dashboard });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/events/:id/categories-with-riders - Get categories with available riders for event registration
+router.get('/:id/categories-with-riders', authenticate, requireAnyRole, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    // Verify event exists
+    const event = await req.prisma.event.findUnique({
+      where: { id }
+    });
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Evento no encontrado' });
+    }
+
+    // Get all categories with riders and their registration status for this event
+    const categories = await req.prisma.category.findMany({
+      where: { isActive: true },
+      include: {
+        riders: {
+          where: { isActive: true },
+          include: {
+            registrations: {
+              where: { eventId: id },
+              select: {
+                id: true,
+                status: true,
+                registeredAt: true
+              }
+            }
+          }
+        },
+        _count: {
+          select: {
+            registrations: {
+              where: { eventId: id }
+            }
+          }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    // Transform data to include registration status
+    const categoriesWithRiders = categories.map(category => ({
+      ...category,
+      riders: category.riders.map(rider => ({
+        ...rider,
+        isRegisteredForEvent: rider.registrations.length > 0,
+        registrationStatus: rider.registrations[0]?.status || null,
+        registrationId: rider.registrations[0]?.id || null
+      })),
+      registeredCount: category._count.registrations
+    }));
+
+    res.json({ 
+      event,
+      categories: categoriesWithRiders 
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/events/:id/bulk-register - Bulk register riders to categories for an event
+router.post('/:id/bulk-register', authenticate, requireSecretaria, async (req, res, next) => {
+  try {
+    const { id: eventId } = req.params;
+    const { registrations } = req.body;
+
+    console.log('Bulk registration request:', { eventId, registrations });
+
+    // Verify event exists
+    const event = await req.prisma.event.findUnique({
+      where: { id: eventId }
+    });
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Evento no encontrado' });
+    }
+
+    // Validate registrations array
+    if (!registrations || !Array.isArray(registrations) || registrations.length === 0) {
+      return res.status(400).json({ message: 'Se requiere un array de inscripciones' });
+    }
+
+    // Process registrations in transaction
+    const result = await req.prisma.$transaction(async (tx) => {
+      const createdRegistrations = [];
+      const errors = [];
+
+      for (const registration of registrations) {
+        try {
+          // Validate required fields
+          if (!registration.categoryId || !registration.riderId) {
+            errors.push({
+              riderId: registration.riderId,
+              categoryId: registration.categoryId,
+              error: 'categoryId y riderId son requeridos'
+            });
+            continue;
+          }
+
+          // Check if registration already exists
+          const existingRegistration = await tx.registration.findFirst({
+            where: {
+              eventId,
+              categoryId: registration.categoryId,
+              riderId: registration.riderId
+            }
+          });
+
+          if (existingRegistration) {
+            errors.push({
+              riderId: registration.riderId,
+              categoryId: registration.categoryId,
+              error: 'Ya existe una inscripción para este corredor en esta categoría'
+            });
+            continue;
+          }
+
+          // Create registration using standard Registration model
+          const newRegistration = await tx.registration.create({
+            data: {
+              eventId,
+              categoryId: registration.categoryId,
+              riderId: registration.riderId,
+              seed: registration.seed || null,
+              status: 'REGISTERED'
+            },
+            include: {
+              rider: {
+                select: {
+                  id: true,
+                  plate: true,
+                  firstName: true,
+                  lastName: true,
+                  club: true
+                }
+              },
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                  gender: true,
+                  wheel: true
+                }
+              },
+              event: {
+                select: {
+                  id: true,
+                  name: true,
+                  date: true
+                }
+              }
+            }
+          });
+
+          createdRegistrations.push(newRegistration);
+        } catch (err) {
+          console.error('Error creating registration:', err);
+          errors.push({
+            riderId: registration.riderId,
+            categoryId: registration.categoryId,
+            error: err.message
+          });
+        }
+      }
+
+      return { createdRegistrations, errors };
+    });
+
+    console.log('Bulk registration result:', result);
+
+    res.status(201).json({
+      message: `${result.createdRegistrations.length} inscripciones creadas correctamente`,
+      registrations: result.createdRegistrations,
+      errors: result.errors
+    });
+  } catch (error) {
+    console.error('Bulk registration error:', error);
+    next(error);
+  }
+});
+
+// GET /api/events/:id/registrations-summary - Get hierarchical registration summary for an event
+router.get('/:id/registrations-summary', authenticate, requireAnyRole, async (req, res, next) => {
+  try {
+    const { id: eventId } = req.params;
+
+    // Verify event exists
+    const event = await req.prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        id: true,
+        name: true,
+        date: true,
+        venue: true,
+        city: true,
+        status: true
+      }
+    });
+
+    if (!event) {
+      return res.status(404).json({ message: 'Evento no encontrado' });
+    }
+
+    // Get registrations grouped by category
+    const registrationsByCategory = await req.prisma.registration.findMany({
+      where: { eventId },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            gender: true,
+            wheel: true,
+            minAge: true,
+            maxAge: true
+          }
+        },
+        rider: {
+          select: {
+            id: true,
+            plate: true,
+            firstName: true,
+            lastName: true,
+            club: true,
+            dateOfBirth: true,
+            gender: true
+          }
+        }
+      },
+      orderBy: [
+        { category: { name: 'asc' } },
+        { rider: { lastName: 'asc' } }
+      ]
+    });
+
+    // Group registrations by category
+    const categoriesMap = new Map();
+    
+    registrationsByCategory.forEach(registration => {
+      const categoryId = registration.category.id;
+      
+      if (!categoriesMap.has(categoryId)) {
+        categoriesMap.set(categoryId, {
+          ...registration.category,
+          registrations: [],
+          totalRegistered: 0,
+          confirmedCount: 0,
+          cancelledCount: 0
+        });
+      }
+      
+      const category = categoriesMap.get(categoryId);
+      category.registrations.push({
+        id: registration.id,
+        rider: registration.rider,
+        seed: registration.seed,
+        status: registration.status,
+        registeredAt: registration.registeredAt
+      });
+      
+      category.totalRegistered++;
+      if (registration.status === 'CONFIRMED') category.confirmedCount++;
+      if (registration.status === 'CANCELLED') category.cancelledCount++;
+    });
+
+    const categories = Array.from(categoriesMap.values());
+    const totalRegistrations = registrationsByCategory.length;
+
+    res.json({
+      event: {
+        ...event,
+        totalRegistrations
+      },
+      categories,
+      summary: {
+        totalCategories: categories.length,
+        totalRegistrations,
+        confirmedRegistrations: categories.reduce((sum, cat) => sum + cat.confirmedCount, 0),
+        cancelledRegistrations: categories.reduce((sum, cat) => sum + cat.cancelledCount, 0)
+      }
+    });
   } catch (error) {
     next(error);
   }

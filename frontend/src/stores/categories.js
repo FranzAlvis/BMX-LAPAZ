@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 
 export const useCategoriesStore = defineStore('categories', () => {
   const categories = ref([])
@@ -16,7 +16,7 @@ export const useCategoriesStore = defineStore('categories', () => {
       console.log('Categories: Using axios to fetch categories')
       console.log('Categories: Token exists:', !!token)
       
-      const response = await axios.get('http://localhost:3000/api/categories')
+      const response = await api.get('/api/categories')
       
       console.log('Categories: Axios response status:', response.status)
       console.log('Categories: Axios response data:', response.data)
@@ -46,31 +46,32 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   const createCategory = async (categoryData) => {
     try {
-      const response = await axios.post('http://localhost:3000/api/categories', categoryData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
+      loading.value = true
+      error.value = null
+      
+      const response = await api.post('/api/categories', categoryData)
       
       categories.value.push(response.data.category)
       return response.data.category
     } catch (err) {
+      console.error('Categories store - createCategory error:', err)
       if (err.response) {
         error.value = `API Error ${err.response.status}: ${err.response.data?.message || 'Unknown error'}`
       } else {
         error.value = err.message
       }
       throw err
+    } finally {
+      loading.value = false
     }
   }
 
   const updateCategory = async (id, categoryData) => {
     try {
-      const response = await axios.put(`http://localhost:3000/api/categories/${id}`, categoryData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
+      loading.value = true
+      error.value = null
+      
+      const response = await api.put(`/api/categories/${id}`, categoryData)
       
       const index = categories.value.findIndex(c => c.id === id)
       if (index !== -1) {
@@ -78,31 +79,36 @@ export const useCategoriesStore = defineStore('categories', () => {
       }
       return response.data.category
     } catch (err) {
+      console.error('Categories store - updateCategory error:', err)
       if (err.response) {
         error.value = `API Error ${err.response.status}: ${err.response.data?.message || 'Unknown error'}`
       } else {
         error.value = err.message
       }
       throw err
+    } finally {
+      loading.value = false
     }
   }
 
   const deleteCategory = async (id) => {
     try {
-      await axios.delete(`http://localhost:3000/api/categories/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
+      loading.value = true
+      error.value = null
+      
+      await api.delete(`/api/categories/${id}`)
       
       categories.value = categories.value.filter(c => c.id !== id)
     } catch (err) {
+      console.error('Categories store - deleteCategory error:', err)
       if (err.response) {
         error.value = `API Error ${err.response.status}: ${err.response.data?.message || 'Unknown error'}`
       } else {
         error.value = err.message
       }
       throw err
+    } finally {
+      loading.value = false
     }
   }
 
